@@ -1,4 +1,4 @@
-#ES6 color picker
+#color picker
 
 ## Building The Code
 
