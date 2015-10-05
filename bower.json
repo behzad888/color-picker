@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "http://github.com/behzad88/color-picker"
+    "url": "http://github.com/behzad888/color-picker"
   },
   "dependencies": {
     "core-js": "zloirock/core-js"
