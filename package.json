@@ -17,7 +17,7 @@
   "main": "dist/commonjs/color-picker.js",
   "repository": {
     "type": "git",
-    "url": "http://github.com/behzad88/color-picker"
+    "url": "http://github.com/behzad888/color-picker"
   },
   "jspm": {
     "main": "color-picker",
