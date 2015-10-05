@@ -2,6 +2,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 	'use strict';
 
 	exports.__esModule = true;
+	exports.ColorPicker = ColorPicker;
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -9,9 +10,19 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 
 	var _$ = _interopRequireDefault(_jquery);
 
-	var ColorPicker = (function () {
-		function ColorPicker() {
-			_classCallCheck(this, ColorPicker);
+	function ColorPicker() {
+		var cp = new CP();
+		_$['default'].fn.extend({
+			ColorPicker: cp.init,
+			ColorPickerHide: cp.hidePicker,
+			ColorPickerShow: cp.showPicker,
+			ColorPickerSetColor: cp.setColor
+		});
+	}
+
+	var CP = (function () {
+		function CP() {
+			_classCallCheck(this, CP);
 
 			this.ids = {};
 			this.charMin = 65;
@@ -28,22 +39,124 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 				livePreview: true,
 				flat: false
 			};
+			this.init();
 		}
 
-		ColorPicker.prototype.fillRGBAFields = function fillRGBAFields(hsba, cal) {
+		CP.prototype.init = function init(opt) {
+			opt = _$['default'].extend({}, this.defaults, opt || {});
+			if (typeof opt.color == 'string') {
+				opt.color = this.HexToHSBA(opt.color);
+			} else if (opt.color.r != undefined && opt.color.g != undefined && opt.color.b != undefined && opt.color.a != undefined) {
+				opt.color = this.RGBAToHSBA(opt.color);
+			} else if (opt.color.h != undefined && opt.color.s != undefined && opt.color.b != undefined && opt.color.a != undefined) {
+				opt.color = this.fixHSBA(opt.color);
+			} else {
+				return this;
+			}
+			return this.each(function () {
+				if (!_$['default'](this).data('colorpickerId')) {
+					var options = _$['default'].extend({}, opt);
+					options.origColor = opt.color;
+					var id = 'collorpicker_' + parseInt((Math.random() * 1000).toString());
+					_$['default'](this).data('colorpickerId', id);
+					var cal = _$['default'](this.tpl).attr('id', id);
+					if (options.flat) {
+						cal.appendTo(this).show();
+					} else {
+						cal.appendTo(document.body);
+					}
+					options.fields = cal.find('input').bind('keyup', this.keyDown).bind('change', this.change).bind('blur', blur).bind('focus', focus);
+					cal.find('span').bind('mousedown', this.downIncrement).end().find('>div.colorpicker_current_color').bind('click', this.restoreOriginal);
+					options.selector = cal.find('div.colorpicker_color').bind('mousedown', this.downSelector);
+					options.selectorIndic = options.selector.find('div div');
+					options.el = this;
+					options.hue = cal.find('div.colorpicker_hue div');
+					cal.find('div.colorpicker_hue').bind('mousedown', this.downHue);
+					options.alpha = cal.find('div.colorpicker_alpha div');
+					cal.find('div.colorpicker_alpha').bind('mousedown', this.downAlpha);
+					options.alphaCanvas = cal.find('div.colorpicker_alpha canvas').get()[0];
+					options.alphaCtx = options.alphaCanvas.getContext("2d");
+					options.newColor = cal.find('div.colorpicker_new_color');
+					options.currentColor = cal.find('div.colorpicker_current_color');
+					cal.data('colorpicker', options);
+					cal.find('div.colorpicker_submit').bind('mouseenter', this.enterSubmit).bind('mouseleave', this.leaveSubmit).bind('click', this.clickSubmit);
+					this.fillRGBAFields(options.color, cal.get(0));
+					this.fillHSBAFields(options.color, cal.get(0));
+					this.fillHexFields(options.color, cal.get(0));
+					this.setHue(options.color, cal.get(0));
+					this.setAlpha(options.color, cal.get(0));
+					this.setSelector(options.color, cal.get(0));
+					this.setCurrentColor(options.color, cal.get(0));
+					this.setNewColor(options.color, cal.get(0));
+					if (options.flat) {
+						cal.css({
+							position: 'relative',
+							display: 'block'
+						});
+					} else {
+						_$['default'](this).bind(options.eventName, this.show);
+					}
+				}
+			});
+		};
+
+		CP.prototype.showPicker = function showPicker() {
+			return this.each(function () {
+				if (_$['default'](this).data('colorpickerId')) {
+					this.show.apply(this);
+				}
+			});
+		};
+
+		CP.prototype.hidePicker = function hidePicker() {
+			return this.each(function () {
+				if (_$['default'](this).data('colorpickerId')) {
+					_$['default']('#' + _$['default'](this).data('colorpickerId')).hide();
+				}
+			});
+		};
+
+		CP.prototype.setColor = function setColor(col) {
+			if (typeof col == 'string') {
+				col = this.HexToHSBA(col);
+			} else if (col.r != undefined && col.g != undefined && col.b != undefined && col.a != undefined) {
+				col = this.RGBAToHSBA(col);
+			} else if (col.h != undefined && col.s != undefined && col.b != undefined && col.a != undefined) {
+				col = this.fixHSBA(col);
+			} else {
+				return this;
+			}
+			return this.each(function () {
+				if (_$['default'](this).data('colorpickerId')) {
+					var cal = _$['default']('#' + _$['default'](this).data('colorpickerId'));
+					cal.data('colorpicker').color = col;
+					cal.data('colorpicker').origColor = col;
+					this.fillRGBAFields(col, cal.get(0));
+					this.fillHSBAFields(col, cal.get(0));
+					this.fillHexFields(col, cal.get(0));
+					this.setHue(col, cal.get(0));
+					this.setAlpha(col, cal.get(0));
+					this.setSelector(col, cal.get(0));
+					this.setCurrentColor(col, cal.get(0));
+					this.setNewColor(col, cal.get(0));
+				}
+			});
+		};
+
+		CP.prototype.fillRGBAFields = function fillRGBAFields(hsba, cal) {
 			var rgba = this.HSBAToRGBA(hsba);
 			_$['default'](cal).data('colorpicker').fields.eq(1).val(Math.round(rgba.r)).end().eq(2).val(Math.round(rgba.g)).end().eq(3).val(Math.round(rgba.b)).end().eq(4).val(Math.round(rgba.a)).end();
 		};
 
-		ColorPicker.prototype.fillHSBAFields = function fillHSBAFields(hsba, cal) {
+		CP.prototype.fillHSBAFields = function fillHSBAFields(hsba, cal) {
 			_$['default'](cal).data('colorpicker').fields.eq(5).val(Math.round(hsba.h)).end().eq(6).val(Math.round(hsba.s)).end().eq(7).val(Math.round(hsba.b)).end().eq(8).val(Math.round(hsba.a)).end();
 		};
 
-		ColorPicker.prototype.fillHexFields = function fillHexFields(hsba, cal) {
+		CP.prototype.fillHexFields = function fillHexFields(hsba, cal) {
 			_$['default'](cal).data('colorpicker').fields.eq(0).val(this.HSBAToHex(hsba)).end();
 		};
 
-		ColorPicker.prototype.setSelector = function setSelector(hsba, cal) {
+		CP.prototype.setSelector = function setSelector(hsba, cal) {
 			_$['default'](cal).data('colorpicker').selector.css('backgroundColor', this.HSBAToCSSRGBA({ h: hsba.h, s: 100, b: 100, a: 255 }));
 			_$['default'](cal).data('colorpicker').selectorIndic.css({
 				left: parseInt((150 * hsba.s / 100, 10).toString()),
@@ -51,7 +164,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			});
 		};
 
-		ColorPicker.prototype.setHue = function setHue(hsba, cal) {
+		CP.prototype.setHue = function setHue(hsba, cal) {
 			_$['default'](cal).data('colorpicker').hue.css('top', parseInt((150 - 150 * hsba.h / 360, 10).toString()));
 			var ctx = _$['default'](cal).data('colorpicker').alphaCtx;
 			var grad = ctx.createLinearGradient(0, 0, 150, 0);
@@ -62,19 +175,19 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			ctx.fillRect(0, 0, 150, 17);
 		};
 
-		ColorPicker.prototype.setAlpha = function setAlpha(hsba, cal) {
+		CP.prototype.setAlpha = function setAlpha(hsba, cal) {
 			_$['default'](cal).data('colorpicker').alpha.css('left', parseInt((150 * hsba.a / 100).toString(), 10));
 		};
 
-		ColorPicker.prototype.setCurrentColor = function setCurrentColor(hsba, cal) {
+		CP.prototype.setCurrentColor = function setCurrentColor(hsba, cal) {
 			_$['default'](cal).data('colorpicker').currentColor.css('backgroundColor', this.HSBAToCSSRGBA(hsba));
 		};
 
-		ColorPicker.prototype.setNewColor = function setNewColor(hsba, cal) {
+		CP.prototype.setNewColor = function setNewColor(hsba, cal) {
 			_$['default'](cal).data('colorpicker').newColor.css('backgroundColor', this.HSBAToCSSRGBA(hsba));
 		};
 
-		ColorPicker.prototype.keyDown = function keyDown(ev) {
+		CP.prototype.keyDown = function keyDown(ev) {
 			var pressedKey = ev.charCode || ev.keyCode || -1;
 			if (pressedKey > this.charMin && pressedKey <= 90 || pressedKey == 32) {
 				return false;
@@ -85,7 +198,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			}
 		};
 
-		ColorPicker.prototype.change = function change(ev) {
+		CP.prototype.change = function change(ev) {
 			var cal = _$['default'](this).parent().parent(),
 			    col;
 			if (this.parentNode.className.indexOf('_hex') > 0) {
@@ -117,18 +230,18 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			cal.data('colorpicker').onChange.apply(cal, [col, this.HSBAToHex(col), this.HSBAToRGBA(col)]);
 		};
 
-		ColorPicker.prototype.blur = function blur(ev) {
+		CP.prototype.blur = function blur(ev) {
 			var cal = _$['default'](this).parent().parent();
 			cal.data('colorpicker').fields.parent().removeClass('colorpicker_focus');
 		};
 
-		ColorPicker.prototype.focus = function focus() {
+		CP.prototype.focus = function focus() {
 			this.charMin = this.parentNode.className.indexOf('_hex') > 0 ? 70 : 65;
 			_$['default'](this).parent().parent().data('colorpicker').fields.parent().removeClass('colorpicker_focus');
 			_$['default'](this).parent().addClass('colorpicker_focus');
 		};
 
-		ColorPicker.prototype.downIncrement = function downIncrement(ev) {
+		CP.prototype.downIncrement = function downIncrement(ev) {
 			var field = _$['default'](this).parent().find('input').focus();
 			var current = {
 				el: _$['default'](this).parent().addClass('colorpicker_slider'),
@@ -143,7 +256,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.moveIncrement = function moveIncrement(ev) {
+		CP.prototype.moveIncrement = function moveIncrement(ev) {
 			ev.data.field.val(Math.max(0, Math.min(ev.data.max, parseInt((ev.data.val + ev.pageY - ev.data.y).toString(), 10))));
 			if (ev.data.preview) {
 				this.change.apply(ev.data.field.get(0), [true]);
@@ -151,7 +264,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.upIncrement = function upIncrement(ev) {
+		CP.prototype.upIncrement = function upIncrement(ev) {
 			this.change.apply(ev.data.field.get(0), [true]);
 			ev.data.el.removeClass('colorpicker_slider').find('input').focus();
 			_$['default'](document).unbind('mouseup', this.upIncrement);
@@ -159,7 +272,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.downHue = function downHue(ev) {
+		CP.prototype.downHue = function downHue(ev) {
 			var current = {
 				cal: _$['default'](this).parent(),
 				y: _$['default'](this).offset().top
@@ -172,12 +285,12 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.moveHue = function moveHue(ev) {
+		CP.prototype.moveHue = function moveHue(ev) {
 			this.change.apply(ev.data.cal.data('colorpicker').fields.eq(5).val(parseInt((360 * (150 - Math.max(0, Math.min(150, ev.pageY - ev.data.y))) / 150).toString(), 10)).get(0), [ev.data.preview]);
 			return false;
 		};
 
-		ColorPicker.prototype.upHue = function upHue(ev) {
+		CP.prototype.upHue = function upHue(ev) {
 			this.fillRGBAFields(ev.data.cal.data('colorpicker').color, ev.data.cal.get(0));
 			this.fillHexFields(ev.data.cal.data('colorpicker').color, ev.data.cal.get(0));
 			_$['default'](document).unbind('mouseup', this.upHue);
@@ -185,7 +298,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.downAlpha = function downAlpha(ev) {
+		CP.prototype.downAlpha = function downAlpha(ev) {
 			var current = {
 				cal: _$['default'](this).parent(),
 				x: _$['default'](this).offset().left
@@ -198,12 +311,12 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.moveAlpha = function moveAlpha(ev) {
+		CP.prototype.moveAlpha = function moveAlpha(ev) {
 			this.change.apply(ev.data.cal.data('colorpicker').fields.eq(8).val(parseInt((100 * Math.max(0, Math.min(150, ev.pageX - ev.data.x)) / 150).toString(), 10)).get(0), [ev.data.preview]);
 			return false;
 		};
 
-		ColorPicker.prototype.upAlpha = function upAlpha(ev) {
+		CP.prototype.upAlpha = function upAlpha(ev) {
 			this.fillRGBAFields(ev.data.cal.data('colorpicker').color, ev.data.cal.get(0));
 			this.fillHexFields(ev.data.cal.data('colorpicker').color, ev.data.cal.get(0));
 			_$['default'](document).unbind('mouseup', this.upAlpha);
@@ -211,7 +324,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.downSelector = function downSelector(ev) {
+		CP.prototype.downSelector = function downSelector(ev) {
 			var current = {
 				cal: _$['default'](this).parent(),
 				pos: _$['default'](this).offset()
@@ -224,12 +337,12 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.moveSelector = function moveSelector(ev) {
+		CP.prototype.moveSelector = function moveSelector(ev) {
 			this.change.apply(ev.data.cal.data('colorpicker').fields.eq(7).val(parseInt((100 * (150 - Math.max(0, Math.min(150, ev.pageY - ev.data.pos.top))) / 150).toString(), 10)).end().eq(6).val(parseInt((100 * Math.max(0, Math.min(150, ev.pageX - ev.data.pos.left)) / 150).toString(), 10)).get(0), [ev.data.preview]);
 			return false;
 		};
 
-		ColorPicker.prototype.upSelector = function upSelector(ev) {
+		CP.prototype.upSelector = function upSelector(ev) {
 			this.fillRGBAFields(ev.data.cal.data('colorpicker').color, ev.data.cal.get(0));
 			this.fillHexFields(ev.data.cal.data('colorpicker').color, ev.data.cal.get(0));
 			_$['default'](document).unbind('mouseup', this.upSelector);
@@ -237,15 +350,15 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.enterSubmit = function enterSubmit(ev) {
+		CP.prototype.enterSubmit = function enterSubmit(ev) {
 			_$['default'](this).addClass('colorpicker_focus');
 		};
 
-		ColorPicker.prototype.leaveSubmit = function leaveSubmit(ev) {
+		CP.prototype.leaveSubmit = function leaveSubmit(ev) {
 			_$['default'](this).removeClass('colorpicker_focus');
 		};
 
-		ColorPicker.prototype.clickSubmit = function clickSubmit(ev) {
+		CP.prototype.clickSubmit = function clickSubmit(ev) {
 			var cal = _$['default'](this).parent();
 			var col = cal.data('colorpicker').color;
 			cal.data('colorpicker').origColor = col;
@@ -253,7 +366,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			cal.data('colorpicker').onSubmit(col, this.HSBAToHex(col), this.HSBAToRGBA(col), cal.data('colorpicker').el);
 		};
 
-		ColorPicker.prototype.show = function show(ev) {
+		CP.prototype.show = function show(ev) {
 			var cal = _$['default']('#' + _$['default'](this).data('colorpickerId'));
 			cal.data('colorpicker').onBeforeShow.apply(this, [cal.get(0)]);
 			var pos = _$['default'](this).offset();
@@ -274,7 +387,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.hide = function hide(ev) {
+		CP.prototype.hide = function hide(ev) {
 			if (!this.isChildOf(ev.data.cal.get(0), ev.target, ev.data.cal.get(0))) {
 				if (ev.data.cal.data('colorpicker').onHide.apply(this, [ev.data.cal.get(0)]) != false) {
 					ev.data.cal.hide();
@@ -283,7 +396,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			}
 		};
 
-		ColorPicker.prototype.isChildOf = function isChildOf(parentEl, el, container) {
+		CP.prototype.isChildOf = function isChildOf(parentEl, el, container) {
 			if (parentEl == el) {
 				return true;
 			}
@@ -301,7 +414,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return false;
 		};
 
-		ColorPicker.prototype.getViewport = function getViewport() {
+		CP.prototype.getViewport = function getViewport() {
 			var m = document.compatMode == 'CSS1Compat';
 			return {
 				l: window.pageXOffset || (m ? document.documentElement.scrollLeft : document.body.scrollLeft),
@@ -311,7 +424,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			};
 		};
 
-		ColorPicker.prototype.fixHSBA = function fixHSBA(hsba) {
+		CP.prototype.fixHSBA = function fixHSBA(hsba) {
 			return {
 				h: Math.min(360, Math.max(0, hsba.h)),
 				s: Math.min(100, Math.max(0, hsba.s)),
@@ -320,7 +433,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			};
 		};
 
-		ColorPicker.prototype.fixRGBA = function fixRGBA(rgba) {
+		CP.prototype.fixRGBA = function fixRGBA(rgba) {
 			return {
 				r: Math.min(255, Math.max(0, rgba.r)),
 				g: Math.min(255, Math.max(0, rgba.g)),
@@ -329,7 +442,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			};
 		};
 
-		ColorPicker.prototype.fixHex = function fixHex(hex) {
+		CP.prototype.fixHex = function fixHex(hex) {
 			var len = 8 - hex.length;
 			if (len > 0) {
 				var o = [];
@@ -342,16 +455,16 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return hex;
 		};
 
-		ColorPicker.prototype.HexToRGBA = function HexToRGBA(hex) {
+		CP.prototype.HexToRGBA = function HexToRGBA(hex) {
 			var hex = parseInt(hex.indexOf('#') > -1 ? hex.substring(1) : hex, 16);
 			return { r: hex >> 24, g: (hex & 0xFF0000) >> 16, b: (hex & 0x00FF) >> 8, a: hex & 0xFF };
 		};
 
-		ColorPicker.prototype.HexToHSBA = function HexToHSBA(hex) {
+		CP.prototype.HexToHSBA = function HexToHSBA(hex) {
 			return this.RGBAToHSBA(this.HexToRGBA(hex));
 		};
 
-		ColorPicker.prototype.RGBAToHSBA = function RGBAToHSBA(rgba) {
+		CP.prototype.RGBAToHSBA = function RGBAToHSBA(rgba) {
 			var hsba = {
 				h: 0,
 				s: 0,
@@ -385,7 +498,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return hsba;
 		};
 
-		ColorPicker.prototype.HSBAToRGBA = function HSBAToRGBA(hsba) {
+		CP.prototype.HSBAToRGBA = function HSBAToRGBA(hsba) {
 			var rgba = {};
 			var h = Math.round(hsba.h);
 			var s = Math.round(hsba.s * 255 / 100);
@@ -418,7 +531,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return { r: Math.round(rgba.r), g: Math.round(rgba.g), b: Math.round(rgba.b), a: Math.round(rgba.a) };
 		};
 
-		ColorPicker.prototype.RGBAToHex = function RGBAToHex(rgba) {
+		CP.prototype.RGBAToHex = function RGBAToHex(rgba) {
 			var hex = [rgba.r.toString(16), rgba.g.toString(16), rgba.b.toString(16), rgba.a.toString(16)];
 			_$['default'].each(hex, function (nr, val) {
 				if (val.length == 1) {
@@ -428,17 +541,17 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			return hex.join('');
 		};
 
-		ColorPicker.prototype.HSBAToHex = function HSBAToHex(hsba) {
+		CP.prototype.HSBAToHex = function HSBAToHex(hsba) {
 			return this.RGBAToHex(this.HSBAToRGBA(hsba));
 		};
 
-		ColorPicker.prototype.HSBAToCSSRGBA = function HSBAToCSSRGBA(hsba) {
+		CP.prototype.HSBAToCSSRGBA = function HSBAToCSSRGBA(hsba) {
 			var rgba = this.HSBAToRGBA(hsba);
 			var css = 'rgba(' + Math.round(rgba.r) + ',' + Math.round(rgba.g) + ',' + Math.round(rgba.b) + ',' + Math.round(rgba.a / 255) + ')';
 			return css;
 		};
 
-		ColorPicker.prototype.restoreOriginal = function restoreOriginal() {
+		CP.prototype.restoreOriginal = function restoreOriginal() {
 			var cal = _$['default'](this).parent();
 			var col = cal.data('colorpicker').origColor;
 			cal.data('colorpicker').color = col;
@@ -451,8 +564,6 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			this.setNewColor(col, cal.get(0));
 		};
 
-		return ColorPicker;
+		return CP;
 	})();
-
-	exports.ColorPicker = ColorPicker;
 });

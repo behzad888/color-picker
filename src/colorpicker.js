@@ -1,6 +1,17 @@
 import $ from 'jquery';
 
-export class ColorPicker {
+export function ColorPicker() {	
+	var cp = new CP();	
+	$.fn.extend({
+		ColorPicker: cp.init,
+		ColorPickerHide: cp.hidePicker,
+		ColorPickerShow: cp.showPicker,
+		ColorPickerSetColor: cp.setColor
+	});	
+}
+
+
+class CP {
 	constructor() {
 		this.ids = {};
 		this.charMin = 65;
@@ -17,8 +28,116 @@ export class ColorPicker {
 			livePreview: true,
 			flat: false
 		};
+		this.init();
 	}
 
+	init(opt) {
+		opt = $.extend({}, this.defaults, opt || {});
+		if (typeof opt.color == 'string') {
+			opt.color = this.HexToHSBA(opt.color);
+		} else if (opt.color.r != undefined && opt.color.g != undefined && opt.color.b != undefined && opt.color.a != undefined) {
+			opt.color = this.RGBAToHSBA(opt.color);
+		} else if (opt.color.h != undefined && opt.color.s != undefined && opt.color.b != undefined && opt.color.a != undefined) {
+			opt.color = this.fixHSBA(opt.color);
+		} else {
+			return this;
+		}
+		return this.each(function () {
+			if (!$(this).data('colorpickerId')) {
+				var options = $.extend({}, opt);
+				options.origColor = opt.color;
+				var id = 'collorpicker_' + parseInt((Math.random() * 1000).toString());
+				$(this).data('colorpickerId', id);
+				var cal = $(this.tpl).attr('id', id);
+				if (options.flat) {
+					cal.appendTo(this).show();
+				} else {
+					cal.appendTo(document.body);
+				}
+				options.fields = cal
+					.find('input')
+					.bind('keyup', this.keyDown)
+					.bind('change', this.change)
+					.bind('blur', blur)
+					.bind('focus', focus);
+				cal
+					.find('span').bind('mousedown', this.downIncrement).end()
+					.find('>div.colorpicker_current_color').bind('click', this.restoreOriginal);
+				options.selector = cal.find('div.colorpicker_color').bind('mousedown', this.downSelector);
+				options.selectorIndic = options.selector.find('div div');
+				options.el = this;
+				options.hue = cal.find('div.colorpicker_hue div');
+				cal.find('div.colorpicker_hue').bind('mousedown', this.downHue);
+				options.alpha = cal.find('div.colorpicker_alpha div');
+				cal.find('div.colorpicker_alpha').bind('mousedown', this.downAlpha);
+				options.alphaCanvas = cal.find('div.colorpicker_alpha canvas').get()[0];
+				options.alphaCtx = options.alphaCanvas.getContext("2d");
+				options.newColor = cal.find('div.colorpicker_new_color');
+				options.currentColor = cal.find('div.colorpicker_current_color');
+				cal.data('colorpicker', options);
+				cal.find('div.colorpicker_submit')
+					.bind('mouseenter', this.enterSubmit)
+					.bind('mouseleave', this.leaveSubmit)
+					.bind('click', this.clickSubmit);
+				this.fillRGBAFields(options.color, cal.get(0));
+				this.fillHSBAFields(options.color, cal.get(0));
+				this.fillHexFields(options.color, cal.get(0));
+				this.setHue(options.color, cal.get(0));
+				this.setAlpha(options.color, cal.get(0));
+				this.setSelector(options.color, cal.get(0));
+				this.setCurrentColor(options.color, cal.get(0));
+				this.setNewColor(options.color, cal.get(0));
+				if (options.flat) {
+					cal.css({
+						position: 'relative',
+						display: 'block'
+					});
+				} else {
+					$(this).bind(options.eventName, this.show);
+				}
+			}
+		});
+	}
+	showPicker() {
+		return this.each(function () {
+			if ($(this).data('colorpickerId')) {
+				this.show.apply(this);
+			}
+		});
+	}
+	hidePicker() {
+		return this.each(function () {
+			if ($(this).data('colorpickerId')) {
+				$('#' + $(this).data('colorpickerId')).hide();
+			}
+		});
+	}
+	setColor(col) {
+		if (typeof col == 'string') {
+			col = this.HexToHSBA(col);
+		} else if (col.r != undefined && col.g != undefined && col.b != undefined && col.a != undefined) {
+			col = this.RGBAToHSBA(col);
+		} else if (col.h != undefined && col.s != undefined && col.b != undefined && col.a != undefined) {
+			col = this.fixHSBA(col);
+		} else {
+			return this;
+		}
+		return this.each(function () {
+			if ($(this).data('colorpickerId')) {
+				var cal = $('#' + $(this).data('colorpickerId'));
+				cal.data('colorpicker').color = col;
+				cal.data('colorpicker').origColor = col;
+				this.fillRGBAFields(col, cal.get(0));
+				this.fillHSBAFields(col, cal.get(0));
+				this.fillHexFields(col, cal.get(0));
+				this.setHue(col, cal.get(0));
+				this.setAlpha(col, cal.get(0));
+				this.setSelector(col, cal.get(0));
+				this.setCurrentColor(col, cal.get(0));
+				this.setNewColor(col, cal.get(0));
+			}
+		});
+	}
 	fillRGBAFields(hsba, cal) {
 		var rgba = this.HSBAToRGBA(hsba);
 		$(cal).data('colorpicker').fields

@@ -16,6 +16,7 @@ gulp.task('build-index', function(){
   var importsToAdd = [];
   var files = [
     'colorpicker.js'
+    
     ].map(function(file){
       return paths.root + file;
   });

@@ -1,7 +1,12 @@
 declare module 'color-picker' {
   import $ from 'jquery';
-  export class ColorPicker {
+  export function ColorPicker(): any;
+  class CP {
     constructor();
+    init(opt: any): any;
+    showPicker(): any;
+    hidePicker(): any;
+    setColor(col: any): any;
     fillRGBAFields(hsba: any, cal: any): any;
     fillHSBAFields(hsba: any, cal: any): any;
     fillHexFields(hsba: any, cal: any): any;
