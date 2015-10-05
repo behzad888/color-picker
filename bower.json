@@ -1,0 +1,23 @@
+{
+  "name": "color-picker",
+  "version": "0.0.1",
+  "description": "ES6 color-picker",
+  "keywords": [
+    "color",
+    "color picker",
+    "color-picker",
+    "css color"    
+  ],
+  "homepage": "http://github.com/behzad888/color-picker",
+  "license": "MIT",
+  "authors": [
+    "Behzad abbasi <behzad88.2012@gmail.com> (https://www.linkedin.com/in/behzad88)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/behzad88/color-picker"
+  },
+  "dependencies": {
+    "core-js": "zloirock/core-js"
+  }
+}
