@@ -42,7 +42,7 @@ class CP {
 		} else {
 			return this;
 		}
-		return this.each(function () {
+		return $.each(function () {
 			if (!$(this).data('colorpickerId')) {
 				var options = $.extend({}, opt);
 				options.origColor = opt.color;

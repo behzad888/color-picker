@@ -54,7 +54,7 @@ var CP = (function () {
 		} else {
 			return this;
 		}
-		return this.each(function () {
+		return _jquery2['default'].each(function () {
 			if (!_jquery2['default'](this).data('colorpickerId')) {
 				var options = _jquery2['default'].extend({}, opt);
 				options.origColor = opt.color;

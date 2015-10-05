@@ -53,7 +53,7 @@ define(['exports', 'jquery'], function (exports, _jquery) {
 			} else {
 				return this;
 			}
-			return this.each(function () {
+			return _$['default'].each(function () {
 				if (!_$['default'](this).data('colorpickerId')) {
 					var options = _$['default'].extend({}, opt);
 					options.origColor = opt.color;
